@@ -488,7 +488,11 @@ def packed_ipc_consumer(
     packed = packed[:content_size]
 
     dtypes = [getattr(torch, dn) for dn in dtype_names]
-    return [
+    weights = [
         (name, t.clone())
         for name, t in unpack_tensor(packed, names, shapes, dtypes, tensor_sizes)
     ]
+    # The producer overwrites the shared buffer once this call returns, so the
+    # async clones must finish reading it first.
+    torch.cuda.current_stream(device_index).synchronize()
+    return weights
